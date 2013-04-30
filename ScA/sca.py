@@ -701,7 +701,7 @@ try:
 ##    it = pyfirmata.util.Iterator(board)
 ##    it.start()
 
-    board = Shrimp.Arduino()
+    board = Shrimp.Shrimp()
     com_port_open = True
 
     print 'Defining Inital Pin Usage'
