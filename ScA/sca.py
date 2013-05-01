@@ -226,7 +226,6 @@ class ScratchSender(threading.Thread):
         self.scratch_socket = socket
         self._stop = threading.Event()
 
-
     def stop(self):
         self._stop.set()
 
@@ -419,7 +418,6 @@ class ScratchListener(threading.Thread):
                 physical_pin_update(p,0,True)
             elif (pinUse == 0):
                 physical_pin_update(p,pin%2,True)
-                
             elif (pinUse == 2):
                 
                 print 'pin' , pin , ' PWM/MOTOR'
@@ -803,11 +801,15 @@ try:
 
         if (cycle_trace == 'disconnected'):
             print "Scratch disconnected"
+            global pause
+            pause = True
             cleanup_threads((listener, sender,steppera,stepperb))
             time.sleep(1)
             cycle_trace = 'start'
 
         if (cycle_trace == 'start'):
+            global pause
+            pause = False
             # open the socket
             print 'Starting to connect...' ,
             the_socket = create_socket(host, PORT)
@@ -826,23 +828,26 @@ try:
             steppera.start()
             stepperb.start()
 
-##        # wait for ctrl+c
-##        try:
-##            #do nothing
-##            time.sleep(0.05)
-##        except KeyboardInterrupt:
-##            print 'Ctrl-C pressed - cleaning up'
-##            cleanup_threads((listener,sender,steppera,stepperb))
-##            board.close()
-##            com_port_open = False
-##            sys.exit()
+        # wait for ctrl+c
+        try:
+            #do nothing
+            time.sleep(0.05)
+        except KeyboardInterrupt:
+            print 'Ctrl-C pressed - cleaning up'
+            global pause
+            pause = True
+            cleanup_threads((listener,sender,steppera,stepperb))
+            board.close()
+            print "board closed"
+            com_port_open = False
+            sys.exit()
 except:
     print 'Final exception reached'
     #cleanup_threads((listener,sender))
     if  com_port_open:
         board.close()
         com_port_open = False
-    board.close()
+    #board.close()
     sys.exit()
 
 
