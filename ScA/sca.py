@@ -628,6 +628,7 @@ class ScratchListener(threading.Thread):
                         bcast_str = 'sensor-update "%s" %d' % (sensor_name, round(distance))
                         self.send_scratch_command(bcast_str)
                     if 'touch' + str(pin) in dataraw:
+                        print "touch received, pin: " + str(pin)
                         p = PIN_NUM.index(pin)
                         LAST_PIN_USE[pin] = PIN_USE[p]
                         PIN_USE[p] = 4
@@ -635,6 +636,7 @@ class ScratchListener(threading.Thread):
                         #print LAST_CAP_VALUE
                         time.sleep(0.1)
                     if 'touchoff' + str(pin) in dataraw:
+                        print "touch off received, pin: " + str(pin)
                         p = PIN_NUM.index(pin)
                         PIN_USE[p] = LAST_PIN_USE[pin]
                     
