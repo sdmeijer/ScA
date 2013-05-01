@@ -67,6 +67,8 @@ LAST_ANALOG_VALUE = [float] * ANALOG_PINS
 CURRENT_ANALOG_VALUE = [float] * ANALOG_PINS
 LAST_CAP_VALUE = {}
 LAST_PIN_USE = {}
+MELODY = {}
+DURATIONS = {}
 
 STEPPERA=0
 STEPPERB=1
@@ -386,6 +388,21 @@ class ScratchListener(threading.Thread):
     def stopped(self):
         return self._stop.isSet()
 
+    def playMelody(self, pin):
+        '''
+        How to use in Scratch:
+            broadcast "note10 [C4,G3]"
+            wait 1 sec.
+            broadcast "dur10 [4,8]"
+        first broadcast sends the notes (C4 is middle C) (CS is C Sharp, etc.)
+        second broadcast sends the durations of the notes (4 = quarter, 8 = eigtht, etc.)
+        When sending a long melody and playing it multiple times,
+        not all the times the melody will be played.
+        Short melodies (1 of 2 notes) plays all the time.
+        '''
+        if (len(DURATIONS[pin]) == len(MELODY[pin])):
+            print "Melody received"
+            board.Melody(pin, MELODY[pin], DURATIONS[pin]) 
 
     def run(self):
         global cycle_trace,motorA,motorB,stepperb_value,step_delay,invert
@@ -638,7 +655,29 @@ class ScratchListener(threading.Thread):
                     if 'touchoff' + str(pin) in dataraw:
                         print "touch off received, pin: " + str(pin)
                         p = PIN_NUM.index(pin)
-                        PIN_USE[p] = LAST_PIN_USE[pin]
+                        try:
+                            PIN_USE[p] = LAST_PIN_USE[pin]
+                        except KeyError:
+                            #print "No touch active"
+                            pass
+                        
+                    if 'note' + str(pin) in dataraw:
+                        #print pin
+                        #print "dataNote: " + str(data)
+                        i = data.index('[')
+                        note = data[i+1:-2]
+                        notes = note.split(',')
+                        MELODY[pin] = notes
+                        #print MELODY
+                    if 'dur' + str(pin) in dataraw:
+                        #print pin
+                        #print "dataDur: " + str(data)
+                        i = data.index('[')
+                        dur = data[i+1:-2]
+                        durs = dur.split(',')
+                        DURATIONS[pin] = durs
+                        #print DURATIONS
+                        self.playMelody(pin)
                     
                 if (('stepfine' in dataraw)):
                     print 'stepfine rcvd'
