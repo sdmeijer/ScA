@@ -55,7 +55,7 @@ SOCKET_TIMEOUT = 1
 
 #Map pin usuage
 PIN_NUM = array('i',[2,3,4,5,6,7,8,9,10,11,12,13])#list of Arduino Uno pin nums
-PIN_USE = array('i',[0,0,0,0,2,1,1,2,2, 2, 1, 1 ])#1 indicates output , 0 indicates input
+PIN_USE = array('i',[0,0,0,0,2,1,1,2, 2, 2, 1, 1])#1 indicates output , 0 indicates input, 4 = capacitive pin
 ANALOG_PIN_NUM = array('i',[0,1,2,3,4,5])
 
 PINS = len(PIN_NUM)
@@ -65,6 +65,8 @@ DIGITAL_OUT = [None] * PINS
 ANALOG_IN = [None] * ANALOG_PINS
 LAST_ANALOG_VALUE = [float] * ANALOG_PINS
 CURRENT_ANALOG_VALUE = [float] * ANALOG_PINS
+LAST_CAP_VALUE = {}
+LAST_PIN_USE = {}
 
 STEPPERA=0
 STEPPERB=1
@@ -102,9 +104,6 @@ def enumerate_serial_ports():
             yield (str(val[1]))#, str(val[0]))
         except EnvironmentError:
             break
-
-
-
 
 class MyError(Exception):
     def __init__(self, value):
@@ -253,6 +252,8 @@ class ScratchSender(threading.Thread):
             #else:
                 #last_bit_pattern += 1 << i
             #print 'lbp %s' % bin(last_bit_pattern)
+            elif (pinUse == 4):
+                LAST_CAP_VALUE[pin] = board.capacitivePin(pin)
 
         last_bit_pattern = last_bit_pattern ^ -1
 
@@ -281,12 +282,26 @@ class ScratchSender(threading.Thread):
         ##                #else:
         ##                    #pin_bit_pattern += 1 << i
         ##            #print bin(pin_bit_pattern)
+                        elif (pinUse == 4):
+                            pin_capvalue = 0
+                            try:
+                                pin_capvalue = board.capacitivePin(pin)
+                                #print "pin_cap: ", pin, ' ', pin_capvalue
+                            except:
+                                #print 'pin_cap' , pin , ' ' , 'no value found'
+                                pass
+                            if (LAST_CAP_VALUE[pin] <> pin_capvalue) and (pin_capvalue > 0):
+                                LAST_CAP_VALUE[pin] = pin_capvalue
+                                self.broadcast_pin_update(pin, pin_capvalue)
+                                
+
                     #if there is a change in the input pins
                     changed_pins = pin_bit_pattern ^ last_bit_pattern
                     #print "changed pins" , changed_pins
                     if (changed_pins > 0):
                         #print 'pin bit pattern %d' % pin_bit_pattern
-
+                        #print "changed pins ", changed_pins
+                        
                         try:
                             self.broadcast_changed_pins(changed_pins, pin_bit_pattern)
                         except Exception as e:
@@ -327,6 +342,7 @@ class ScratchSender(threading.Thread):
             pinUse = PIN_USE[p]
             pin = PIN_NUM[p]
             # if we care about this pin's value
+            #print pin_value_map
             if (changed_pin_map >> p) & 0b1:
                 pin_value = (pin_value_map >> p) & 0b1
                 if (pinUse == 0):
@@ -612,7 +628,17 @@ class ScratchListener(threading.Thread):
                         print'Distance:',round(distance), 'cm'
                         sensor_name = "pin" + str(pin) 
                         bcast_str = 'sensor-update "%s" %d' % (sensor_name, round(distance))
-                        self.send_scratch_command(bcast_str)            
+                        self.send_scratch_command(bcast_str)
+                    if 'touch' + str(pin) in dataraw:
+                        p = PIN_NUM.index(pin)
+                        LAST_PIN_USE[pin] = PIN_USE[p]
+                        PIN_USE[p] = 4
+                        LAST_CAP_VALUE[pin] = board.capacitivePin(pin)
+                        #print LAST_CAP_VALUE
+                        time.sleep(0.1)
+                    if 'touchoff' + str(pin) in dataraw:
+                        p = PIN_NUM.index(pin)
+                        PIN_USE[p] = LAST_PIN_USE[pin]
                     
                 if (('stepfine' in dataraw)):
                     print 'stepfine rcvd'
