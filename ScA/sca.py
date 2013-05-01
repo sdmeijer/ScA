@@ -346,7 +346,7 @@ class ScratchSender(threading.Thread):
             if (changed_pin_map >> p) & 0b1:
                 pin_value = (pin_value_map >> p) & 0b1
                 if (pinUse == 0):
-                    self.broadcast_pin_update(pin, pin_value)
+                    self.broadcast_pin_update(p, pin_value)
 
     def broadcast_pin_update(self, pin, value):
         sensor_name = "pin" + str(pin)
