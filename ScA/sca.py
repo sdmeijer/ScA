@@ -364,8 +364,6 @@ class ScratchSender(threading.Thread):
         self.scratch_socket.send(a.tostring() + cmd)
 
 
-
-
 class ScratchListener(threading.Thread):
     def __init__(self, socket):
         threading.Thread.__init__(self)
@@ -621,7 +619,7 @@ class ScratchListener(threading.Thread):
                         duration = board.pulseIn_set(pin, "HIGH", 4)
                         duration = board.pulseIn_set(pin, "HIGH", 4) #two times, because the first time the values are off
                         distance = duration * 0.01716
-                        global pause
+                        #global pause
                         pause = False
                         if (distance > 500) or (distance < 1.1):
                             distance = 0
