@@ -12,7 +12,6 @@ import struct
 import time
 import datetime as dt
 import Arduino as Shrimp
-
 import platform
 if platform.system() == 'Windows':
     import _winreg as winreg
@@ -20,12 +19,10 @@ if platform.system() == 'Linux':
     import glob
 import itertools
 
-
 PORT = 42001
 DEFAULT_HOST = '127.0.0.1'
 BUFFER_SIZE = 240
 SOCKET_TIMEOUT = 1
-
 
 #Map pin usuage
 PIN_NUM = array('i',[2,3,4,5,6,7,8,9,10,11,12,13])#list of Arduino Uno pin nums
