@@ -2,8 +2,6 @@
 # This code is derived from scratch_gpio_handler for the RPi (GPL v2)
 #
 #
-#
-
 
 from array import *
 import threading
@@ -13,29 +11,20 @@ import sys
 import struct
 import time
 import datetime as dt
-#import pyfirmata
 import Arduino as Shrimp
 
-import platform #SDM
-if platform.system() == 'Windows': #SDM
-    import _winreg as winreg #SDM
-if platform.system() == 'Linux': #SDM
-    import glob #SDM
+import platform
+if platform.system() == 'Windows':
+    import _winreg as winreg
+if platform.system() == 'Linux':
+    import glob
 import itertools
 
-'''
-from Tkinter import Tk
-from tkSimpleDialog import askstring
-root = Tk()
-root.withdraw()
-'''
 
 PORT = 42001
 DEFAULT_HOST = '127.0.0.1'
-#HOST = askstring('Scratch Connector', 'IP:')
-BUFFER_SIZE = 240 #used to be 100
+BUFFER_SIZE = 240
 SOCKET_TIMEOUT = 1
-
 
 
 #Map pin usuage
@@ -61,6 +50,7 @@ STEPPERB=1
 stepper_value = array('i',[0,0])
 
 invert = False
+
 
 def isNumeric(s):
     try:
@@ -89,12 +79,14 @@ def enumerate_serial_ports():
         except EnvironmentError:
             break
 
+
 class MyError(Exception):
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
         return repr(self.value)
+
 
 def physical_pin_update(pin_index, value,debug_info=True):
     global invert
@@ -170,6 +162,7 @@ def step_fine(pinA,pinB,pinC,pinD,delay):
 
     board.digitalWrite(pinA, "HIGH")
     time.sleep(delay)
+
     
 #----------------------------- STEPPER CONTROL --------------
 class StepperControl(threading.Thread):
@@ -178,11 +171,14 @@ class StepperControl(threading.Thread):
         threading.Thread.__init__(self)
         self._stop = threading.Event()
 
+
     def stop(self):
         self._stop.set()
 
+
     def stopped(self):
         return self._stop.isSet()
+
 
     def run(self):
         global step_delay
@@ -200,6 +196,7 @@ class StepperControl(threading.Thread):
                     time.sleep(10*step_delay*((100/abs(local_stepper_value))-1))                       
             else:
                 time.sleep(1) # sleep if stepper value is zero
+
                  
 # --------------------MAIN INPUT PIN DETECTION CODE
 class ScratchSender(threading.Thread):
@@ -208,11 +205,14 @@ class ScratchSender(threading.Thread):
         self.scratch_socket = socket
         self._stop = threading.Event()
 
+
     def stop(self):
         self._stop.set()
 
+
     def stopped(self):
         return self._stop.isSet()
+
 
     def run(self):
         global step_delay
@@ -226,15 +226,10 @@ class ScratchSender(threading.Thread):
                 pin_value = 0;
                 try:
                     pin_value = int(board.digitalRead(pin))
-                    #print 'pin' , pin , ' ' ,pin_value
                 except:
-                    #print 'pin' , pin , ' ' , 'no value found'
                     pass
                 self.broadcast_pin_update(pin, pin_value)
                 last_bit_pattern += pin_value << p
-            #else:
-                #last_bit_pattern += 1 << i
-            #print 'lbp %s' % bin(last_bit_pattern)
             elif (pinUse == 4):
                 LAST_CAP_VALUE[pin] = board.capacitivePin(pin)
 
@@ -251,27 +246,17 @@ class ScratchSender(threading.Thread):
                         pinUse = PIN_USE[p]
                         pin = PIN_NUM[p]
                         if (pinUse == 0):
-                            #print 'pin_sender' , pin
-
-                            #pin_bit_pattern += int(board.digital[2].read())
                             pin_value = 0;
                             try:
                                 pin_value = int(board.digitalRead(pin))
-                                #print 'pin' , pin , ' ' ,pin_value
                             except:
-                                #print 'pin' , pin , ' ' , 'no value found'
                                 pass
                             pin_bit_pattern += pin_value << p
-        ##                #else:
-        ##                    #pin_bit_pattern += 1 << i
-        ##                    #print bin(pin_bit_pattern)
                         elif (pinUse == 4):
                             pin_capvalue = 0
                             try:
                                 pin_capvalue = board.capacitivePin(pin)
-                                #print "pin_cap: ", pin, ' ', pin_capvalue
                             except:
-                                #print 'pin_cap' , pin , ' ' , 'no value found'
                                 pass
                             if (LAST_CAP_VALUE[pin] <> pin_capvalue) and (pin_capvalue > 0):
                                 LAST_CAP_VALUE[pin] = pin_capvalue
@@ -280,11 +265,7 @@ class ScratchSender(threading.Thread):
 
                     #if there is a change in the input pins
                     changed_pins = pin_bit_pattern ^ last_bit_pattern
-                    #print "changed pins" , changed_pins
                     if (changed_pins > 0):
-                        #print 'pin bit pattern %d' % pin_bit_pattern
-                        #print "changed pins ", changed_pins
-                        
                         try:
                             self.broadcast_changed_pins(changed_pins, pin_bit_pattern)
                         except Exception as e:
@@ -320,22 +301,24 @@ class ScratchSender(threading.Thread):
                 else:
                     time.sleep(0.1) # give cpu time to breathe           
 
+
     def broadcast_changed_pins(self, changed_pin_map, pin_value_map):
         for p in range(PINS):
             pinUse = PIN_USE[p]
             pin = PIN_NUM[p]
             # if we care about this pin's value
-            #print pin_value_map
             if (changed_pin_map >> p) & 0b1:
                 pin_value = (pin_value_map >> p) & 0b1
                 if (pinUse == 0):
                     self.broadcast_pin_update(pin, pin_value)
+
 
     def broadcast_pin_update(self, pin, value):
         sensor_name = "pin" + str(pin)
         bcast_str = 'sensor-update "%s" %d' % (sensor_name, value)
         print 'sending: %s' % bcast_str
         self.send_scratch_command(bcast_str)
+
 
     def send_scratch_command(self, cmd):
         n = len(cmd)
@@ -352,6 +335,7 @@ class ScratchListener(threading.Thread):
         threading.Thread.__init__(self)
         self.scratch_socket = socket
         self._stop = threading.Event()
+
         
     def send_scratch_command(self, cmd):
         n = len(cmd)
@@ -366,8 +350,10 @@ class ScratchListener(threading.Thread):
     def stop(self):
         self._stop.set()
 
+
     def stopped(self):
         return self._stop.isSet()
+
 
     def playMelody(self, pin):
         '''
@@ -385,10 +371,9 @@ class ScratchListener(threading.Thread):
             print "Melody received"
             board.Melody(pin, MELODY[pin], DURATIONS[pin]) 
 
+
     def run(self):
         global cycle_trace,motorA,motorB,stepperb_value,step_delay,invert
-
-
         stepperb_count=100
 
         #initilise pin states
@@ -417,9 +402,6 @@ class ScratchListener(threading.Thread):
             try:
                 data = self.scratch_socket.recv(BUFFER_SIZE)
                 dataraw = data[4:].lower()
-                #print "Listening", str(dataraw)
-                #print 'Length: %d, Data: %s' % (len(dataraw), dataraw)
-                #print 'Cycle trace' , cycle_trace
                 if len(dataraw) == 0:
                     #This is probably due to client disconnecting
                     #I'd like the program to retry connecting to the client
@@ -429,9 +411,7 @@ class ScratchListener(threading.Thread):
                         break
 
             except socket.timeout:
-                #print "No data received: socket timeout"
-
-                    
+                #No data received: socket timeout
                 continue
             except IOError, e:
                 if cycle_trace == 'running':
@@ -441,7 +421,7 @@ class ScratchListener(threading.Thread):
                 
 
             if 'sensor-update' in dataraw:
-                #gloablly set all ports
+                #globally set all ports
                 if 'allpins" 1' in dataraw:
                     for p in range(PINS):
                         pinUse = PIN_USE[p]
@@ -476,8 +456,6 @@ class ScratchListener(threading.Thread):
                 
                 #check for individual port commands
                 for p in range(PINS):
-                    #check_broadcast = str(i) + 'on'
-                    #print check_broadcast
                     pin = PIN_NUM[p]
                     if 'pin' + str(pin) + '" 1' in dataraw:
                         if (pinUse >= 1):
@@ -500,18 +478,13 @@ class ScratchListener(threading.Thread):
                         
                 #Use bit pattern to control ports
                 if 'pinpattern' in dataraw:
-                    #print 'Found pinpattern'
                     num_of_bits = PINS
                     outputall_pos = dataraw.find('pinpattern')
                     sensor_value = dataraw[(outputall_pos+12):].split()
-                    #print sensor_value[0]
-                    if isNumeric(sensor_value[0]) == True: #SDM
+                    if isNumeric(sensor_value[0]) == True:
                         bit_pattern = ('00000000000000000000000000'+sensor_value[0])[-num_of_bits:]
-                        #print 'bit_pattern %s' % bit_pattern
                         j = 0
                         for p in range(PINS):
-                        #bit_state = ((2**i) & sensor_value) >> i
-                        #print 'dummy pin %d state %d' % (i, bit_state)
                             if (PIN_USE[p] == 1):
                                 if bit_pattern[-(j+1)] == '0':
                                     physical_pin_update(p,0)
@@ -522,10 +495,6 @@ class ScratchListener(threading.Thread):
                 #Check for motor commands
                 for p in range(PINS):
                     if (PIN_USE[p] == 2):
-                    #check for individual port commands
-                    
-                    #check_broadcast = str(i) + 'on'
-                    #print check_broadcast
                         pin = PIN_NUM[p]
                         if 'motor' + str(pin) in dataraw:
                             outputall_pos = dataraw.find('motor'+str(pin))
@@ -539,13 +508,10 @@ class ScratchListener(threading.Thread):
                                 except:
                                     print 'Motor Write failed'
                                     pass
+
                 #Check for servo commands
                 for p in range(PINS):
                     if ((PIN_USE[p] == 1) or (PIN_USE[p] == 3)):
-                    #check for individual port commands
-                    
-                    #check_broadcast = str(i) + 'on'
-                    #print check_broadcast
                         pin = PIN_NUM[p]
                         if 'servo' + str(pin) in dataraw:
                             if (PIN_USE[p] == 1):
@@ -556,7 +522,7 @@ class ScratchListener(threading.Thread):
                             sensor_value = dataraw[(1+outputall_pos+len('servo'+str(pin))):].split()
                             print "sensor_value" , sensor_value[0]
                             if isNumeric(sensor_value[0]):
-                                motorvalue = int(sensor_value[0])#int(max(0,min(100,int(sensor_value[0]))))
+                                motorvalue = int(sensor_value[0])
                                 print motorvalue
                                 try:
                                     board.Servo.write(pin, motorvalue)
@@ -564,7 +530,6 @@ class ScratchListener(threading.Thread):
                                     pass
                                 
                 #Check for stepper commands
-
                 if 'stepdelay' in dataraw:
                     outputall_pos = dataraw.find('stepdelay')
                     sensor_value = dataraw[(1+outputall_pos+len('stepdelay')):].split()
@@ -578,8 +543,6 @@ class ScratchListener(threading.Thread):
                     print "stepperb" , sensor_value[0]
                     if isNumeric(sensor_value[0]):
                         stepper_value[STEPPERB] =  int(max(-100,min(100,int(sensor_value[0]))))
-
-   
 
             #Check for Broadcasts from Scratch
             if 'broadcast' in dataraw:
@@ -597,8 +560,6 @@ class ScratchListener(threading.Thread):
                         if (PIN_USE[p] >= 1):
                             physical_pin_update(p,0)
                 for p in range(PINS):
-                    #check_broadcast = str(i) + 'on'
-                    #print check_broadcast
                     pin = PIN_NUM[p]
                     if 'pin' + str(pin)+'high' in dataraw:
                         physical_pin_update(p,1)
@@ -617,7 +578,6 @@ class ScratchListener(threading.Thread):
                         duration = board.pulseIn_set(pin, "HIGH", 4)
                         duration = board.pulseIn_set(pin, "HIGH", 4) #two times, because the first time the values are off
                         distance = duration * 0.01716
-                        #global pause
                         pause = False
                         if (distance > 500) or (distance < 1.1):
                             distance = 0
@@ -631,7 +591,6 @@ class ScratchListener(threading.Thread):
                         LAST_PIN_USE[pin] = PIN_USE[p]
                         PIN_USE[p] = 4
                         LAST_CAP_VALUE[pin] = board.capacitivePin(pin)
-                        #print LAST_CAP_VALUE
                         time.sleep(0.1)
                     if 'touchoff' + str(pin) in dataraw:
                         print "touch off received, pin: " + str(pin)
@@ -639,31 +598,24 @@ class ScratchListener(threading.Thread):
                         try:
                             PIN_USE[p] = LAST_PIN_USE[pin]
                         except KeyError:
-                            #print "No touch active"
+                            #No touch active
                             pass
                         
                     if 'note' + str(pin) in dataraw:
-                        #print pin
-                        #print "dataNote: " + str(data)
                         i = data.index('[')
                         note = data[i+1:-2]
                         notes = note.split(',')
                         MELODY[pin] = notes
-                        #print MELODY
                     if 'dur' + str(pin) in dataraw:
-                        #print pin
-                        #print "dataDur: " + str(data)
                         i = data.index('[')
                         dur = data[i+1:-2]
                         durs = dur.split(',')
                         DURATIONS[pin] = durs
-                        #print DURATIONS
                         self.playMelody(pin)
                     
                 if (('stepfine' in dataraw)):
                     print 'stepfine rcvd'
                     step_fine(10,11,12,13,step_delay )
-                    
                     
                 if (('stepcoarse' in dataraw)):
                     print 'stepcoarse rcvd'
@@ -679,14 +631,10 @@ class ScratchListener(threading.Thread):
                     print 'spincoasre rcvd'
                     for i in range(1,512):
                         step_fine(10,11,12,13,step_delay ) 
-                   
                     
             if 'stop handler' in dataraw:
                 cleanup_threads((listener, sender))
                 sys.exit()
-
-            #else:
-                #print 'received something: %s' % dataraw
 
 
 def create_socket(host, port):
@@ -700,9 +648,8 @@ def create_socket(host, port):
             print "There was an error connecting to Scratch!"
             print "I couldn't find a Mesh session at host: %s, port: %s" % (host, port) 
             time.sleep(3)
-            #sys.exit(1)
-
     return scratch_sock
+
 
 def cleanup_threads(threads):
     for thread in threads:
@@ -764,7 +711,6 @@ if version == 'version':
 
             if (cycle_trace == 'disconnected'):
                 print "Scratch disconnected"
-                #global pause
                 pause = True
                 board.close()
                 cleanup_threads((listener, sender,steppera,stepperb))
@@ -773,17 +719,13 @@ if version == 'version':
                 cycle_trace = 'start'
 
             if (cycle_trace == 'start'):
-                #global pause
                 pause = False
-
                 # open the socket
                 print 'Starting to connect...' ,
                 the_socket = create_socket(host, PORT)
                 print 'Connected!'
                 the_socket.settimeout(SOCKET_TIMEOUT)
                 listener = ScratchListener(the_socket)
-        #        data = the_socket.recv(BUFFER_SIZE)
-        #        print "Discard 1st data buffer" , data[4:].lower()
                 sender = ScratchSender(the_socket)
                 steppera = StepperControl(STEPPERA)
                 stepperb = StepperControl(STEPPERB)
@@ -800,7 +742,6 @@ if version == 'version':
                 time.sleep(0.05)
             except KeyboardInterrupt:
                 print 'Ctrl-C pressed - cleaning up'
-                #global pause
                 pause = True
                 cleanup_threads((listener,sender,steppera,stepperb))
                 board.close()
@@ -809,13 +750,8 @@ if version == 'version':
                 sys.exit()
     except:
         print 'Final exception reached'
-        #cleanup_threads((listener,sender))
         if  com_port_open:
             board.close()
             com_port_open = False
-        #board.close()
         sys.exit()
-
-
-
 
