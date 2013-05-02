@@ -1,5 +1,5 @@
 # This code is copyright Simon Walters under GPL v2
-# This code is derived from scratch_gpio_handler for the RPi
+# This code is derived from scratch_gpio_handler for the RPi (GPL v2)
 #
 #
 #
