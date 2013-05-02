@@ -1,23 +1,8 @@
 # This code is copyright Simon Walters under GPL v2
 # This code is derived from scratch_gpio_handler for the RPi
-# Version 0.3 alpha
-# V 0.35 - Add in support for PWM on Pins 9,10 and 11 (temp remove analog input)
-# V0.36 - Add in support for usings pins 7,8,12 and 13 for servos instead of digital out
-# V0.37 - Add in stepper motor trial support
-# V 0.38  Add in delay to only send digital inputs every 0.2 sec
-# V0.39  Trying to check com port
-# V0.40 - Possible auto com working version
-# V0.41 - Looks like it works on Windows XP
-# V0.42e1 - Add in ability to set pullups pulldowns
-# V0.43 - playing with stepper
-# V0.44 - move code into thread
-# V0.45 - Fix PWM regression and introduce experimental continous stepper
-# V0.46 - StepperB variable now working using pins 10,11,12,13 value -100 to 100
-#         Data inputs only sent back every 0.1 secs to stop chatter
-# V0.47 - more mods
-# V0.50 - radical program restructuring with additional threads for steppers
-# V0.51 - Decrease CPU usuage in threads and add invert function for digital outs
-# V0.52 - mode mods
+#
+#
+#
 
 
 from array import *
@@ -76,9 +61,6 @@ STEPPERB=1
 stepper_value = array('i',[0,0])
 
 invert = False
-
-global pause
-pause = False
 
 def isNumeric(s):
     try:
@@ -282,7 +264,7 @@ class ScratchSender(threading.Thread):
                             pin_bit_pattern += pin_value << p
         ##                #else:
         ##                    #pin_bit_pattern += 1 << i
-        ##            #print bin(pin_bit_pattern)
+        ##                    #print bin(pin_bit_pattern)
                         elif (pinUse == 4):
                             pin_capvalue = 0
                             try:
@@ -410,10 +392,11 @@ class ScratchListener(threading.Thread):
         stepperb_count=100
 
         #initilise pin states
-        print 'Setting Inital Pin States'
+        print 'Setting Initial Pin States'
         for p in range(PINS):
             pinUse = PIN_USE[p]
             pin = PIN_NUM[p]
+            #print pin
             if (pinUse == 1):
                 physical_pin_update(p,0,True)
             elif (pinUse == 0):
@@ -734,120 +717,105 @@ if __name__ == '__main__':
     else:
         host = DEFAULT_HOST
 
+
 #start program
 com_port_open = False
-try:
-##    #Try and find open com port and then try to open them up     
-##    if platform.system() == 'Windows': #SDM
-##        esp = enumerate_serial_ports() # create a generator #SDM
-##    if platform.system() == 'Linux': #SDM
-##        esp = glob.glob("/dev/ttyUSB*") #SDM
-##    for i in esp:
-##        print 'Found ' , i
-##        try:
-##            print "Testing " , i
-##            board = pyfirmata.Arduino(i, baudrate=57600) # Baudrate must match rate set in sketch
-##            if board.get_firmata_version() == None:
-##                raise Exception('spam', 'eggs')
-##
-##            print i , 'passed'
-##            break
-##        except Exception , e:
-##            print '"Exception ' , e
-##            pass
-##
-##    #If the above code errors on you - rem the lines out and use this instead
-##    #board = pyfirmata.Arduino("COM26", baudrate=57600) # Replace COM26 with your Arduino port
-##
-##    #carry on assuming an Arduino or Shrimp is connected 
-##    com_port_open = True
-##    it = pyfirmata.util.Iterator(board)
-##    it.start()
+global pause
+pause = False
 
-    board = Shrimp.Shrimp()
-    com_port_open = True
+board = Shrimp.Shrimp()
+version = board.version()
 
-    print 'Defining Inital Pin Usage'
-    for p in range(PINS):
-        pin = PIN_NUM[p]
-        pinUse = PIN_USE[p]
-        if (pinUse == 1):
-            board.pinMode(pin, "OUTPUT")
-            print 'pin', pin, ' out'
-        elif (pinUse == 0):
-            board.pinMode(pin, "INPUT") 
-            print 'pin', pin, ' in'
-        elif (pinUse == 2):
-            board.pinMode(pin, "OUTPUT") 
-            print 'pin', pin, ' PWM/MOTOR'
-        elif (pinUse == 3):
-            print 'pin', pin, ' servo'
+if version == 'version':
+    try:
+        com_port_open = True
 
-##    for aPin in range(ANALOG_PINS):
-##            board.analog[ANALOG_PIN_NUM[aPin]].enable_reporting()
-##            tempstr = 'a:' + str(ANALOG_PIN_NUM[i]) + ':i'
-##            ANALOG_IN[i] = board.get_pin(tempstr)
-            
+        print 'Defining Inital Pin Usage'
+        for p in range(PINS):
+            pin = PIN_NUM[p]
+            pinUse = PIN_USE[p]
+            if (pinUse == 1):
+                board.pinMode(pin, "OUTPUT")
+                print 'pin', pin, ' out'
+            elif (pinUse == 0):
+                board.pinMode(pin, "INPUT") 
+                print 'pin', pin, ' in'
+            elif (pinUse == 2):
+                board.pinMode(pin, "OUTPUT") 
+                print 'pin', pin, ' PWM/MOTOR'
+            elif (pinUse == 3):
+                print 'pin', pin, ' servo'
 
-    cycle_trace = 'start'
-#    motorA = 0;
-#    motorB = 0;
-#    motor_timing = array('i',[0,0,100])
-#    motor_order = array('i',[0,1])
-    stepperb_value=0
-    steppera_value=0
-    step_delay = 0.005 # delay used between steps in stepper motor functions
-    while True:
+    ##    for aPin in range(ANALOG_PINS):
+    ##            board.analog[ANALOG_PIN_NUM[aPin]].enable_reporting()
+    ##            tempstr = 'a:' + str(ANALOG_PIN_NUM[i]) + ':i'
+    ##            ANALOG_IN[i] = board.get_pin(tempstr)
+                
 
-        if (cycle_trace == 'disconnected'):
-            print "Scratch disconnected"
-            global pause
-            pause = True
-            cleanup_threads((listener, sender,steppera,stepperb))
-            time.sleep(1)
-            cycle_trace = 'start'
+        cycle_trace = 'start'
+    #    motorA = 0;
+    #    motorB = 0;
+    #    motor_timing = array('i',[0,0,100])
+    #    motor_order = array('i',[0,1])
+        stepperb_value=0
+        steppera_value=0
+        step_delay = 0.005 # delay used between steps in stepper motor functions
+        while True:
 
-        if (cycle_trace == 'start'):
-            global pause
-            pause = False
-            # open the socket
-            print 'Starting to connect...' ,
-            the_socket = create_socket(host, PORT)
-            print 'Connected!'
-            the_socket.settimeout(SOCKET_TIMEOUT)
-            listener = ScratchListener(the_socket)
-    #        data = the_socket.recv(BUFFER_SIZE)
-    #        print "Discard 1st data buffer" , data[4:].lower()
-            sender = ScratchSender(the_socket)
-            steppera = StepperControl(STEPPERA)
-            stepperb = StepperControl(STEPPERB)
-            cycle_trace = 'running'
-            print "Running...."
-            listener.start()
-            sender.start()
-            steppera.start()
-            stepperb.start()
+            if (cycle_trace == 'disconnected'):
+                print "Scratch disconnected"
+                #global pause
+                pause = True
+                board.close()
+                cleanup_threads((listener, sender,steppera,stepperb))
+                time.sleep(2)
+                board = Shrimp.Shrimp()
+                cycle_trace = 'start'
 
-        # wait for ctrl+c
-        try:
-            #do nothing
-            time.sleep(0.05)
-        except KeyboardInterrupt:
-            print 'Ctrl-C pressed - cleaning up'
-            global pause
-            pause = True
-            cleanup_threads((listener,sender,steppera,stepperb))
+            if (cycle_trace == 'start'):
+                #global pause
+                pause = False
+
+                # open the socket
+                print 'Starting to connect...' ,
+                the_socket = create_socket(host, PORT)
+                print 'Connected!'
+                the_socket.settimeout(SOCKET_TIMEOUT)
+                listener = ScratchListener(the_socket)
+        #        data = the_socket.recv(BUFFER_SIZE)
+        #        print "Discard 1st data buffer" , data[4:].lower()
+                sender = ScratchSender(the_socket)
+                steppera = StepperControl(STEPPERA)
+                stepperb = StepperControl(STEPPERB)
+                cycle_trace = 'running'
+                print "Running...."
+                listener.start()
+                sender.start()
+                steppera.start()
+                stepperb.start()
+
+            # wait for ctrl+c
+            try:
+                #do nothing
+                time.sleep(0.05)
+            except KeyboardInterrupt:
+                print 'Ctrl-C pressed - cleaning up'
+                #global pause
+                pause = True
+                cleanup_threads((listener,sender,steppera,stepperb))
+                board.close()
+                print "board closed"
+                com_port_open = False
+                sys.exit()
+    except:
+        print 'Final exception reached'
+        #cleanup_threads((listener,sender))
+        if  com_port_open:
             board.close()
-            print "board closed"
             com_port_open = False
-            sys.exit()
-except:
-    print 'Final exception reached'
-    #cleanup_threads((listener,sender))
-    if  com_port_open:
-        board.close()
-        com_port_open = False
-    #board.close()
-    sys.exit()
+        #board.close()
+        sys.exit()
+
+
 
 
