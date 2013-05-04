@@ -313,7 +313,7 @@ class ScratchSender(threading.Thread):
     def broadcast_pin_update(self, pin, value):
         sensor_name = "pin" + str(pin)
         bcast_str = 'sensor-update "%s" %d' % (sensor_name, value)
-        print 'sending: %s' % bcast_str
+        #print 'sending: %s' % bcast_str
         self.send_scratch_command(bcast_str)
 
 
@@ -556,6 +556,15 @@ class ScratchListener(threading.Thread):
                     for p in range(PINS):
                         if (PIN_USE[p] >= 1):
                             physical_pin_update(p,0)
+                if ('touchoffall' in dataraw):
+                    for p in range(PINS):
+                        pin = PIN_NUM[p]
+                        try:
+                            PIN_USE[p] = LAST_PIN_USE[pin]
+                        except KeyError:
+                            #No touch active
+                            pass
+                    
                 for p in range(PINS):
                     pin = PIN_NUM[p]
                     if 'pin' + str(pin)+'high' in dataraw:
@@ -585,10 +594,10 @@ class ScratchListener(threading.Thread):
                     if 'touch' + str(pin) in dataraw:
                         print "touch received, pin: " + str(pin)
                         p = PIN_NUM.index(pin)
-                        LAST_PIN_USE[pin] = PIN_USE[p]
-                        PIN_USE[p] = 4
-                        LAST_CAP_VALUE[pin] = board.capacitivePin(pin)
-                        time.sleep(0.1)
+                        if PIN_USE[p] != 4 and int(pin) <> 13:
+                            LAST_PIN_USE[pin] = PIN_USE[p]
+                            LAST_CAP_VALUE[pin] = 99
+                            PIN_USE[p] = 4
                     if 'touchoff' + str(pin) in dataraw:
                         print "touch off received, pin: " + str(pin)
                         p = PIN_NUM.index(pin)
