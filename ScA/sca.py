@@ -313,7 +313,7 @@ class ScratchSender(threading.Thread):
     def broadcast_pin_update(self, pin, value):
         sensor_name = "pin" + str(pin)
         bcast_str = 'sensor-update "%s" %d' % (sensor_name, value)
-        #print 'sending: %s' % bcast_str
+        print 'sending: %s' % bcast_str
         self.send_scratch_command(bcast_str)
 
 
