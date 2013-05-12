@@ -99,20 +99,20 @@ def physical_pin_update(pin_index, value,debug_info=True):
         board.pinMode(pin, "OUTPUT")
         PIN_USE[pin_index] = 1
         if debug_info:
-            print 'g pin' , pin , ' set to be digital out'
+            print 'pin' , pin , ' set to be digital out'
     
     if (pinUse == 1) or (pinUse == 0):
         if invert == True:
             value = 1 - value
         #print 'setting physical pin %d to %d' % (PIN_NUM[pin_index],value)
         if debug_info:
-            print 'g setting physical pin %d to %d' % (pin,value)
+            print 'setting physical pin %d to %d' % (pin,value)
         board.digitalWrite(pin, convValue)
     elif (pinUse == 2):
         if invert == True:
             value = float(1.0 - value)
         if debug_info:
-            print 'g setting physical pin %d to %d' % (pin,value)
+            print 'setting physical pin (PWM) %d to %d' % (pin,value)
         board.analogWrite(pin, float(value))
             
 
@@ -259,7 +259,6 @@ class ScratchSender(threading.Thread):
                                 LAST_CAP_VALUE[pin] = pin_capvalue
                                 self.broadcast_pin_update(pin, pin_capvalue)
                                 
-
                     #if there is a change in the input pins
                     changed_pins = pin_bit_pattern ^ last_bit_pattern
                     if (changed_pins > 0):
@@ -384,10 +383,8 @@ class ScratchListener(threading.Thread):
             elif (pinUse == 0):
                 physical_pin_update(p,pin%2,True)
             elif (pinUse == 2):
-                
                 print 'pin' , pin , ' PWM/MOTOR'
             elif (pinUse == 3):
-                
                 print 'pin' , pin , ' servo'
 
         for i in range(ANALOG_PINS):
@@ -415,61 +412,34 @@ class ScratchListener(threading.Thread):
                     cycle_trace = 'disconnected'
                 break
 
-                
-
             if 'sensor-update' in dataraw:
                 #globally set all ports
-                if 'allpins" 1' in dataraw:
+                if ('allpins" 1' in dataraw) \
+                   or ('allpins" "on' in dataraw) \
+                   or ('allpins" "high' in dataraw):
                     for p in range(PINS):
                         pinUse = PIN_USE[p]
                         if (pinUse == 1):
                             physical_pin_update(p,1)
-                if 'allpins" 0' in dataraw:
+                if ('allpins" 0' in dataraw) \
+                   or ('allpins" "off' in dataraw) \
+                   or ('allpins" "low' in dataraw):
                     for p in range(PINS):
                         pinUse = PIN_USE[p]
                         if (pinUse == 1):
                             physical_pin_update(p,0)
-                if 'allpins" "on' in dataraw:
-                    for p in range(PINS):
-                        pinUse = PIN_USE[p]
-                        if (pinUse == 1):
-                            physical_pin_update(p,1)
-                if 'allpins" "off' in dataraw:
-                    for p in range(PINS):
-                        pinUse = PIN_USE[p]
-                        if (pinUse == 1):
-                            physical_pin_update(p,0)
-                if 'allpins" "high' in dataraw:
-                    for p in range(PINS):
-                        pinUse = PIN_USE[p]
-                        if (pinUse == 1):
-                            physical_pin_update(p,1)
-                if 'allpins" "low' in dataraw:
-                    for p in range(PINS):
-                        pinUse = PIN_USE[p]
-                        if (pinUse == 1):
-                            physical_pin_update(p,0)
-                
                 
                 #check for individual port commands
                 for p in range(PINS):
                     pin = PIN_NUM[p]
-                    if 'pin' + str(pin) + '" 1' in dataraw:
+                    if ('pin' + str(pin) + '" 1' in dataraw) \
+                       or ('pin' + str(pin) + '" "on' in dataraw) \
+                       or ('pin' + str(pin) + '" "high' in dataraw):
                         if (pinUse >= 1):
                             physical_pin_update(p,1)
-                    if 'pin' + str(pin) + '" 0' in dataraw:
-                        if (pinUse >= 1):
-                            physical_pin_update(p,0)
-                    if 'pin' + str(pin) + '" "on' in dataraw:
-                        if (pinUse >= 1):
-                            physical_pin_update(p,1)
-                    if 'pin' + str(pin) + '" "off' in dataraw:
-                        if (pinUse >= 1):
-                            physical_pin_update(p,0)
-                    if 'pin' + str(pin) + '" "high' in dataraw:
-                        if (pinUse >= 1):
-                            physical_pin_update(p,1)
-                    if 'pin' + str(pin) + '" "low' in dataraw:
+                    if 'pin' + str(pin) + '" 0' in dataraw \
+                       or ('pin' + str(pin) + '" "off' in dataraw) \
+                       or ('pin' + str(pin) + '" "low' in dataraw):
                         if (pinUse >= 1):
                             physical_pin_update(p,0)
                         
@@ -493,17 +463,21 @@ class ScratchListener(threading.Thread):
                 for p in range(PINS):
                     if (PIN_USE[p] == 2):
                         pin = PIN_NUM[p]
-                        if 'motor' + str(pin) in dataraw:
-                            outputall_pos = dataraw.find('motor'+str(pin))
-                            sensor_value = dataraw[(1+outputall_pos+len('motor'+str(pin))):].split()
-                            print "sensor_value" , sensor_value[0]
+                        if ('motor' + str(pin) in dataraw) \
+                           or ('power' + str(pin) in dataraw):
+                            try:
+                                outputall_pos = dataraw.index('motor'+str(pin))
+                                t = 'motor'
+                            except ValueError:
+                                outputall_pos = dataraw.find('power'+str(pin))
+                                t = 'power'
+                            sensor_value = dataraw[(1+outputall_pos+len(t+str(pin))):].split()
                             if isNumeric(sensor_value[0]):
-                                motorvalue = float(max(0,min(100,int(sensor_value[0]))))/100.0
-                                print motorvalue
-                                try:
+                                motorvalue = 2.55 * max(0,min(100,int(sensor_value[0])))
+                                if motorvalue >= 0.0 and motorvalue <= 255.0:
                                     physical_pin_update(p,motorvalue)
-                                except:
-                                    print 'Motor Write failed'
+                                else:
+                                    print t.capitalize() + 'write failed'
                                     pass
 
                 #Check for servo commands
@@ -541,6 +515,25 @@ class ScratchListener(threading.Thread):
                     if isNumeric(sensor_value[0]):
                         stepper_value[STEPPERB] =  int(max(-100,min(100,int(sensor_value[0]))))
 
+                #Check for config commands
+                if ('config' in dataraw):
+                    for p in range(PINS):
+                        #check_broadcast = str(i) + 'on'
+                        #print check_broadcast
+                        pin = PIN_NUM[p]
+                        pinUse = PIN_USE[p]
+                        if 'config' + str(pin)+'out' in dataraw: # change pin to output from input
+                            if pinUse == 0: # check to see if it is an input at moment
+                                board.pinMode(pin, "OUTPUT") # make it an output
+                                print 'pin' , pin , ' out'
+                                PIN_USE[p] = 1
+                        if 'config' + str(pin)+'in' in dataraw: # change pin to input from output
+                            if pinUse != 0: # check to see if it not an input already
+                                board.pinMode(pin, "INPUT") # make it an input
+                                print 'pin' , pin , ' in'
+                                PIN_USE[p] = 0
+
+
             #Check for Broadcasts from Scratch
             if 'broadcast' in dataraw:
                 print 'received broadcast: %s' % data
@@ -567,13 +560,11 @@ class ScratchListener(threading.Thread):
                     
                 for p in range(PINS):
                     pin = PIN_NUM[p]
-                    if 'pin' + str(pin)+'high' in dataraw:
+                    if ('pin' + str(pin)+'high' in dataraw) \
+                       or ('pin' + str(pin)+'on' in dataraw):
                         physical_pin_update(p,1)
-                    if 'pin' + str(pin)+'low' in dataraw:
-                        physical_pin_update(p,0)
-                    if 'pin' + str(pin)+'on' in dataraw:
-                        physical_pin_update(p,1)
-                    if 'pin' + str(pin)+'off' in dataraw:
+                    if ('pin' + str(pin)+'low' in dataraw) \
+                       or ('pin' + str(pin)+'off' in dataraw):
                         physical_pin_update(p,0)
                     if 'sonar' + str(pin) in dataraw:
                         print "sonar detected"
@@ -597,6 +588,7 @@ class ScratchListener(threading.Thread):
                         if PIN_USE[p] != 4 and int(pin) <> 13:
                             LAST_PIN_USE[pin] = PIN_USE[p]
                             LAST_CAP_VALUE[pin] = 99
+                            self.broadcast_pin_update(pin, LAST_CAP_VALUE[pin])
                             PIN_USE[p] = 4
                     if 'touchoff' + str(pin) in dataraw:
                         print "touch off received, pin: " + str(pin)
@@ -612,12 +604,15 @@ class ScratchListener(threading.Thread):
                         note = data[i+1:-2]
                         notes = note.split(',')
                         MELODY[pin] = notes
+                        if len(MELODY[pin]) = len(DURATIONS[pin]):
+                            self.playMelody(pin)
                     if 'dur' + str(pin) in dataraw:
                         i = data.index('[')
                         dur = data[i+1:-2]
                         durs = dur.split(',')
                         DURATIONS[pin] = durs
-                        self.playMelody(pin)
+                        if len(DURATIONS[pin]) = len(MELODY[pin]):
+                            self.playMelody(pin)
                     
                 if (('stepfine' in dataraw)):
                     print 'stepfine rcvd'
@@ -626,7 +621,6 @@ class ScratchListener(threading.Thread):
                 if (('stepcoarse' in dataraw)):
                     print 'stepcoarse rcvd'
                     step_coarse(10,11,12,13,step_delay )
-
 
                 if (('spinfine' in dataraw)):
                     print 'spinfine rcvd'
@@ -683,7 +677,7 @@ if version == 'version':
     try:
         com_port_open = True
 
-        print 'Defining Inital Pin Usage'
+        print 'Defining Initial Pin Usage'
         for p in range(PINS):
             pin = PIN_NUM[p]
             pinUse = PIN_USE[p]
@@ -751,13 +745,14 @@ if version == 'version':
                 pause = True
                 cleanup_threads((listener,sender,steppera,stepperb))
                 board.close()
-                print "board closed"
+                print 'Shrimp/Arduino closed'
                 com_port_open = False
                 sys.exit()
     except:
         print 'Final exception reached'
         if  com_port_open:
             board.close()
+            print 'Shrimp/Arduino closed'
             com_port_open = False
         sys.exit()
 
