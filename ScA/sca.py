@@ -604,14 +604,14 @@ class ScratchListener(threading.Thread):
                         note = data[i+1:-2]
                         notes = note.split(',')
                         MELODY[pin] = notes
-                        if len(MELODY[pin]) = len(DURATIONS[pin]):
+                        if len(MELODY[pin]) == len(DURATIONS[pin]):
                             self.playMelody(pin)
                     if 'dur' + str(pin) in dataraw:
                         i = data.index('[')
                         dur = data[i+1:-2]
                         durs = dur.split(',')
                         DURATIONS[pin] = durs
-                        if len(DURATIONS[pin]) = len(MELODY[pin]):
+                        if len(DURATIONS[pin]) == len(MELODY[pin]):
                             self.playMelody(pin)
                     
                 if (('stepfine' in dataraw)):
