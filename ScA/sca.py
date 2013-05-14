@@ -26,7 +26,7 @@ SOCKET_TIMEOUT = 1
 
 #Map pin usuage
 PIN_NUM = array('i',[2,3,4,5,6,7,8,9,10,11,12,13])#list of Arduino Uno pin nums
-PIN_USE = array('i',[0,0,0,0,2,1,1,2, 2, 2, 1, 1])#1 indicates output , 0 indicates input, 4 = capacitive pin
+PIN_USE = array('i',[0,0,0,0,2,1,1,2, 2, 2, 1, 1])#1=output , 0=input, 2=PWM
 ANALOG_PIN_NUM = array('i',[0,1,2,3,4,5])
 
 PINS = len(PIN_NUM)
@@ -515,25 +515,6 @@ class ScratchListener(threading.Thread):
                     if isNumeric(sensor_value[0]):
                         stepper_value[STEPPERB] =  int(max(-100,min(100,int(sensor_value[0]))))
 
-                #Check for config commands
-                if ('config' in dataraw):
-                    for p in range(PINS):
-                        #check_broadcast = str(i) + 'on'
-                        #print check_broadcast
-                        pin = PIN_NUM[p]
-                        pinUse = PIN_USE[p]
-                        if 'config' + str(pin)+'out' in dataraw: # change pin to output from input
-                            if pinUse == 0: # check to see if it is an input at moment
-                                board.pinMode(pin, "OUTPUT") # make it an output
-                                print 'pin' , pin , ' out'
-                                PIN_USE[p] = 1
-                        if 'config' + str(pin)+'in' in dataraw: # change pin to input from output
-                            if pinUse != 0: # check to see if it not an input already
-                                board.pinMode(pin, "INPUT") # make it an input
-                                print 'pin' , pin , ' in'
-                                PIN_USE[p] = 0
-
-
             #Check for Broadcasts from Scratch
             if 'broadcast' in dataraw:
                 print 'received broadcast: %s' % data
@@ -630,7 +611,26 @@ class ScratchListener(threading.Thread):
                 if (('spincoarse' in dataraw)):
                     print 'spincoasre rcvd'
                     for i in range(1,512):
-                        step_fine(10,11,12,13,step_delay ) 
+                        step_fine(10,11,12,13,step_delay )
+
+                #Check for config commands
+                if 'config' in dataraw:
+                    for p in range(PINS):
+                        #check_broadcast = str(i) + 'on'
+                        #print check_broadcast
+                        pin = PIN_NUM[p]
+                        pinUse = PIN_USE[p]
+                        if 'config' + str(pin)+'out' in dataraw: # change pin to output from input
+                            print "check"
+                            if pinUse != 1: # check to see if it is not an output at moment
+                                board.pinMode(pin, "OUTPUT") # make it an output
+                                print 'pin' , pin , ' out'
+                                PIN_USE[p] = 1
+                        if 'config' + str(pin)+'in' in dataraw: # change pin to input from output
+                            if pinUse != 0: # check to see if it not an input already
+                                board.pinMode(pin, "INPUT") # make it an input
+                                print 'pin' , pin , ' in'
+                                PIN_USE[p] = 0
                     
             if 'stop handler' in dataraw:
                 cleanup_threads((listener, sender))
