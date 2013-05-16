@@ -569,7 +569,7 @@ class ScratchListener(threading.Thread):
                         if PIN_USE[p] != 4 and int(pin) <> 13:
                             LAST_PIN_USE[pin] = PIN_USE[p]
                             LAST_CAP_VALUE[pin] = 99
-                            self.broadcast_pin_update(pin, LAST_CAP_VALUE[pin])
+                            physical_pin_update(pin, LAST_CAP_VALUE[pin])
                             PIN_USE[p] = 4
                     if 'touchoff' + str(pin) in dataraw:
                         print "touch off received, pin: " + str(pin)
